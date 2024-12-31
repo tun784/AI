@@ -1,6 +1,7 @@
 import turtle
 import random
 import time
+from tkinter import Tk, Button
 from tkinter import messagebox
 global move_history
 
@@ -34,7 +35,7 @@ def is_win(board):
         
     return 'Continue playing'
 
-
+##AI Engine
 
 def march(board,y,x,dy,dx,length):
     '''
@@ -157,9 +158,9 @@ def possible_moves(board):
     '''
     khởi tạo danh sách tọa độ có thể có tại danh giới các nơi đã đánh phạm vi 3 đơn vị
     '''
-    
+    #mảng taken lưu giá trị của người chơi và của máy trên bàn cờ
     taken = []
-    
+    # mảng directions lưu hướng đi (8 hướng)
     directions = [(0,1),(0,-1),(1,0),(-1,0),(1,1),(-1,-1),(-1,1),(1,-1)]
     # cord: lưu các vị trí không đi 
     cord = {}
@@ -202,14 +203,14 @@ def stupid_score(board,col,anticol,y,x):
     M = 1000
     res,adv, dis = 0, 0, 0
     
-    
+    #tấn công
     board[y][x]=col
-
+    #draw_stone(x,y,colors[col])
     sumcol = score_of_col_one(board,col,y,x)       
     a = winning_situation(sumcol)
     adv += a * M
     sum_sumcol_values(sumcol)
-    
+    #{0: 0, 1: 15, 2: 0, 3: 0, 4: 0, 5: 0, -1: 0}
     adv +=  sumcol[-1] + sumcol[1] + 4*sumcol[2] + 8*sumcol[3] + 16*sumcol[4]
     
     #phòng thủ
@@ -257,7 +258,7 @@ def evaluate_board(board, col, anticol):
     sum_sumcol_values(player_score)
     score += 4 * player_score[3] + 8 * player_score[4] + 1000 * player_score[5]
 
-    
+    # Trừ điểm cho đối thủ
     opponent_score = score_of_col(board, anticol)
     sum_sumcol_values(opponent_score)
     score -= 4 * opponent_score[3] + 8 * opponent_score[4] + 1000 * opponent_score[5]
@@ -274,11 +275,11 @@ def minimax(board, depth, maximizingPlayer, col, anticol, alpha, beta):
     moves = possible_moves(board)
     best_move = None
 
-    if maximizingPlayer:  # Lượt của AI 
+    if maximizingPlayer:  # Lượt của AI (maximizing player)
         max_eval = float('-inf')
         for move in moves:
             y, x = move
-            board[y][x] = col  
+            board[y][x] = col  # Giả lập nước đi
             eval, _ = minimax(board, depth - 1, False, col, anticol, alpha, beta)
             board[y][x] = ' '  # Hoàn tác nước đi
             if eval > max_eval:
@@ -289,13 +290,13 @@ def minimax(board, depth, maximizingPlayer, col, anticol, alpha, beta):
                 break
         return max_eval, best_move
 
-    else:  
+    else:  # Lượt của đối thủ (minimizing player)
         min_eval = float('inf')
         for move in moves:
             y, x = move
-            board[y][x] = anticol  
+            board[y][x] = anticol  # Giả lập nước đi của đối thủ
             eval, _ = minimax(board, depth - 1, True, col, anticol, alpha, beta)
-            board[y][x] = ' '  
+            board[y][x] = ' '  # Hoàn tác nước đi
             if eval < min_eval:
                 min_eval = eval
                 best_move = move
@@ -319,6 +320,66 @@ def best_move(board, col):
     _, move = minimax(board, depth=2 if len(board) > 10 else 3, maximizingPlayer=True, col=col, anticol=anticol, alpha=float('-inf'), beta=float('inf'))
     return move
 
+##Graphics Engine
+def restart():
+    """Restart the board and start a new game."""
+    global board, win, move_history
+    move_history = []
+    win = False
+    board = make_empty_board(len(board))
+    screen.clearscreen()
+    initialize()
+
+def select_mode():
+    """Exit the current game and return to the mode selection screen."""
+    global root
+    root.withdraw()  # Hide the tkinter window during mode selection
+    screen.bye()
+    initialize()
+
+# ... Other functions remain unchanged ...
+
+def draw_button(x, y, label, callback):
+    """Draw a button on the screen."""
+    button = turtle.Turtle()
+    button.penup()
+    button.hideturtle()
+    button.speed(0)
+    button.goto(x, y)
+
+    # Draw button rectangle
+    button.write(label, align="center", font=("Arial", 12, "bold"))
+    button_shape = turtle.Turtle()
+    button_shape.penup()
+    button_shape.goto(x - 40, y - 10)
+    button_shape.pendown()
+    button_shape.goto(x + 40, y - 10)
+    button_shape.goto(x + 40, y + 10)
+    button_shape.goto(x - 40, y + 10)
+    button_shape.goto(x - 40, y - 10)
+    button_shape.penup()
+    button_shape.hideturtle()
+
+    # Attach event listener
+    def click_handler(x_click, y_click):
+        if x - 40 <= x_click <= x + 40 and y - 10 <= y_click <= y + 10:
+            callback()
+
+    screen.onscreenclick(click_handler)
+
+def initialize_tkinter():
+    root = Tk()
+    root.title("Gomoku Controls")
+
+    restart_button = Button(root, text="Restart", command=restart, width=15, height=2)
+    restart_button.pack(pady=10)
+
+    select_mode_button = Button(root, text="Select Mode", command=select_mode, width=15, height=2)
+    select_mode_button.pack(pady=10)
+
+    root.geometry("200x150")
+    root.withdraw()
+    return root
 
 
 def click(x, y):
@@ -326,7 +387,7 @@ def click(x, y):
     
     x, y = getindexposition(x, y)
     
-    
+    # Trả lại 2 nước nếu người chơi nhấn hoàn tác
     if x == -1 and y == -1 and len(move_history) != 0:
         x, y = move_history[-1]
         del (move_history[-1])
@@ -352,7 +413,7 @@ def click(x, y):
                 win = True
                 return
             
-        
+            # Chuyển lượt
             current_turn = 'w' if current_turn == 'b' else 'b'
 
         elif mode == 2:  # Người vs Máy
@@ -390,7 +451,7 @@ def initialize():
 
     # Nhập kích thước bàn cờ
     size = None
-    while not isinstance(size, int) or size < 5 or size > 25:  # Kích thước tối thiểu 5x5, tối đa 25x25
+    while not isinstance(size, int) or size < 5 or size > 25:
         try:
             size = int(turtle.textinput("Kích thước bàn cờ", "Nhập kích thước bàn cờ (5-25):"))
         except:
@@ -407,9 +468,9 @@ def initialize():
             continue
 
     if mode == 1:
-        current_turn = 'b'  # Lượt đầu tiên là đen
+        current_turn = 'b'
     elif mode == 2:
-        current_turn = None  # Không cần trong chế độ người vs máy
+        current_turn = None
 
     screen = turtle.Screen()
     screen.onclick(click)
@@ -451,7 +512,11 @@ def initialize():
 
     border.ht()
 
+    # Draw button
+
+    root = initialize_tkinter()
     screen.listen()
+    root.mainloop()
     screen.mainloop()
     
 def getindexposition(x,y):
